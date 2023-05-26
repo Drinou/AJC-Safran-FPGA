@@ -16,9 +16,9 @@ end counter_unit;
 architecture behavioral of counter_unit is
 	
 	--Declaration des signaux internes 
-	constant Countlimit : positive := 200_000_000; -- 199_999_999 car un bit de moins si commence à 0
-	-- Test pour testbench sur un count de 0 à 4
-	constant tb_Countlimit : positive := 4; --sert à faire des tests pour limiter ressources, temps et mieux voir
+	constant Countlimit : positive := 200_000_000; -- 199_999_999 car un bit de moins si commence ï¿½ 0
+	-- Test pour testbench sur un count de 0 ï¿½ 4
+	constant tb_Countlimit : positive := 4; --sert ï¿½ faire des tests pour limiter ressources, temps et mieux voir
 	-- Valeur maximal de comptage du compteur
     constant MAX : positive := tb_Countlimit; --200_000_000
     --constant MAX : positive := 200_000_000;
@@ -28,7 +28,7 @@ architecture behavioral of counter_unit is
 	signal memoxor : std_logic;
 	-- liaison entre Q et LED (registre)
 	signal memoled : std_logic;
-	-- end_counter étant une sortie, il faut un signal interne pour pouvoir l'utiliser en entrée (pour la LED)
+	-- end_counter ï¿½tant une sortie, il faut un signal interne pour pouvoir l'utiliser en entrï¿½e (pour la LED)
 	signal end_counter_in : std_logic;
 	begin
 
@@ -36,31 +36,31 @@ architecture behavioral of counter_unit is
 		process(clock,resetn)
 		begin
 		    
-		    --Quand resetn passe à 1, alors tous les bits de Q sont remis à zéro
+		    --Quand resetn passe ï¿½ 1, alors tous les bits de Q sont remis ï¿½ zï¿½ro
 			if(resetn = '1') then 
 			     Q <= (others => '0');
 			     memoled <= '0';
 			
-			--Sinon si on est sur un coup d'horloge front montant, alors que la commande Cmd_reset est à 1, alors tous les bits de Q ainsi que la LED sont remis à zéro
+			--Sinon si on est sur un coup d'horloge front montant, alors que la commande Cmd_reset est ï¿½ 1, alors tous les bits de Q ainsi que la LED sont remis ï¿½ zï¿½ro
 			elsif(rising_edge(clock)) then
                 if (Cmd_resetn = '1') then
                     Q <= (others => '0');
                 
-                --Sinon Q s'incrémente de 1
+                --Sinon Q s'incrï¿½mente de 1
                 else 
                     Q <= Q + 1;
                 
                 end if;
                 
                 -- liaison entre Q et LED
-                memoled <= end_counter_in XOR memoled;
+                memoled <= memoxor;
                 
 			end if;
 		end process;
 		
 		--Partie combinatoire
-		-- fonctionne en simultaner
-		Cmd_resetn <= '1' when Q = MAX OR restart = '1' 
+		-- fonctionne en simultanÃ©
+		Cmd_resetn <= '1' when end_counter_in = '1' /* ce qui est Ã©gale Ã  '1' when Q = MAX*/  OR restart = '1' 
 		else '0' ;
 		
 		end_counter_in <= Cmd_resetn;
