@@ -10,9 +10,11 @@ entity tp_fsm is
         limit_combi : positive := 199_999_999
     );
     port ( 
-		clock			: in std_logic; 
+        clock			: in std_logic; 
         resetn		    : in std_logic;
-        end_counter_cycles : out std_logic
+        restart         : in std_logic;
+        led1_out        : out std_logic_vector (2 downto 0);
+        led2_out        : out std_logic_vector (2 downto 0)
      );
 end tp_fsm;
 
@@ -20,18 +22,24 @@ end tp_fsm;
 
 architecture behavioral of tp_fsm is
 
---    type state is (idle, state1, state2); --a modifier avec vos etats
-     -- constant counter_count_limit : positive := 6;
-     -- constant counter_unit_limit : positive := 199_999_999;
---    signal current_state : state;  --etat dans lequel on se trouve actuellement
---    signal next_state : state;	   --etat dans lequel on passera au prochain coup d'horloge
-      signal cmd_incremt_counter : std_logic;
-      signal mux_incremt_1 : std_logic_vector (2 downto 0):= (others => '0');
-      signal mux_incremt_2 : std_logic_vector (2 downto 0):= (others => '0');
-      signal counter_count : std_logic_vector (2 downto 0) := (others => '0');
-      signal cmd_reinit_counter_cycles : std_logic;
-      signal end_counter_cycles_in : std_logic;
-
+    type state is (etat_init_W, etat_R, etat_B, etat_V); --Etats de la FSM
+    signal present_state: state;
+    -- constant counter_count_limit : positive := 6;
+    -- constant counter_unit_limit : positive := 199_999_999;
+    signal current_state : state;  --etat dans lequel on se trouve actuellement
+    signal next_state : state;	   --etat dans lequel on passera au prochain coup d'horloge
+    signal cmd_incremt_counter : std_logic;
+    signal mux_incremt_1 : std_logic_vector (2 downto 0):= (others => '0');
+    signal mux_incremt_2 : std_logic_vector (2 downto 0):= (others => '0');
+    signal counter_count : std_logic_vector (2 downto 0) := (others => '0');
+    signal cmd_reinit_counter_cycles : std_logic;
+    signal end_counter_cycles : std_logic;
+    signal led1_RVB : std_logic_vector (2 downto 0);
+    signal led2_RVB : std_logic_vector (2 downto 0);
+    signal cmd_blink : std_logic;
+    signal blink : std_logic;
+    signal mux_blink : std_logic;
+    
     --importation du composant "entity counter_unit" du counter.vhd
     component counter_unit is
         generic(
@@ -41,7 +49,7 @@ architecture behavioral of tp_fsm is
             clock		: in std_logic; 
             resetn		: in std_logic;
             end_counter	: out std_logic
-         );
+        );
     end component;
 	
 begin
@@ -51,81 +59,93 @@ begin
             limit => limit_combi --counter_unit_limit
             )
         port map (
-            clock => clock, 
-            resetn => resetn, 
+            clock => clock,
+            resetn => resetn,
             end_counter => cmd_incremt_counter
             );
     
-    counter_count_p : process(clock,resetn)
+    
+    process(clock,resetn)
     begin
              
         --Quand resetn est a 1, alors tous les bits de counter_count sont remis à zéro
         if(resetn = '1') then 
             counter_count <= (others => '0');
+            led1_RVB <= (others => '0');
+            led2_RVB <= (others => '0');
+            blink <= '0';
+            present_state <= etat_init_W; --Etat d'initialisation & au reset de la FSM
         
-        --Sinon si on est sur un coup d'horloge front montant, alors que la commande Cmd_incremt_counter est à 1, alors counter_count s'incremente de 1
+        --Sinon si on est sur un coup d'horloge front montant, alors counter_count prend la valeur de mux_incremt_2
         elsif(rising_edge(clock)) then
-            if (cmd_incremt_counter = '1') then
-                mux_incremt_1 <= counter_count + 1;
+            counter_count <= mux_incremt_2; --signal interne en sortie du registe entre Q et =
+            blink <= mux_blink; --signal interne en sortie du mux du registre de blink
+            case present_state is
             
-            --Sinon counter_count reste a sa derniere valeure
-            else 
-                mux_incremt_1 <= counter_count;
-            
-            end if;
-            
-            if(cmd_reinit_counter_cycles = '1') then
-               mux_incremt_2 <= (others => '0'); 
-               
-            else
-                mux_incremt_2 <= mux_incremt_1;                                   
-    
---                current_state <= idle;
-         
---			   elsif(rising_edge(clock)) then
-    
---				current_state <= next_state;
+                when etat_init_W =>  --Quand l'état est Blanc
+                    led1_RVB(0) <= '1';
+                    led1_RVB(1) <= '1';
+                    led1_RVB(2) <= '1';
+                    if(end_counter_cycles ='1') then
+                        present_state<= etat_R;
+                    elsif(restart ='1') then
+                    present_state<= etat_init_W;
+                    end if;
+                     
+                when etat_R =>        --Quand l'état est Rouge
+                    led1_RVB(0) <= '1';
+                    led1_RVB(1) <= '0';
+                    led1_RVB(2) <= '0';
+                    if(end_counter_cycles ='1') then
+                        present_state<= etat_B;
+                    elsif(restart ='1') then
+                    present_state<= etat_init_W;
+                    end if;
+                    
+                when etat_B =>       --Quand l'état est Bleu
+                    led1_RVB(0) <= '0';
+                    led1_RVB(1) <= '1';
+                    led1_RVB(2) <= '0';
+                    if(end_counter_cycles ='1') then
+                        present_state<= etat_V;
+                    elsif(restart ='1') then
+                    present_state<= etat_init_W;
+                    end if;
+                    
+                when etat_V =>         --Quand l'état est Vert
+                    led1_RVB(0) <= '0';
+                    led1_RVB(1) <= '0';
+                    led1_RVB(2) <= '1';
+                    if(end_counter_cycles ='1') then
+                        present_state<= etat_R;
+                    elsif(restart ='1') then
+                    present_state<= etat_init_W;
+                    end if;
+            end case;
+         end if;  
+    end process;
+
+
+        mux_incremt_1 <= counter_count + 1 when cmd_incremt_counter = '1'
+        else counter_count;
         
---				--a completer avec votre compteur de cycles
-             end if;
+        mux_incremt_2 <= mux_incremt_1 when cmd_reinit_counter_cycles = '0'
+        else (others => '0'); -- ou "000"
         
-         end if;
-            
-            
-            
-    end process counter_count_p;
-		
-			
-		
---    -- FSM
---    fsm_p : process(current_state,XX) --a completer avec vos signaux
---    begin		
---       case current_state is
---          when idle =>
---            next_state <= state1; --prochain etat
-
---            --signaux pilotes par la fsm
-
---          when state1 =>
---            next_state <= state1;
-
---            --signaux pilotes par la fsm
-
---          when state2 =>
---            next_state <= state1;
-
---            --signaux pilotes par la fsm
-
-
---          end case;
-
-
---		end process fsm_p;
-		
-		end_counter_cycles_in <= '1' when counter_count = limit
+		end_counter_cycles <= '1' when counter_count = limit
 		else '0';
-		end_counter_cycles <= end_counter_cycles_in;
-		cmd_reinit_counter_cycles <= '1' when end_counter_cycles_in = '1' --OR restart = '1' 
-		else '0' ;	
-
+		
+		cmd_reinit_counter_cycles <= end_counter_cycles; --OR restart = '1'	
+		
+		cmd_blink <= cmd_incremt_counter;
+		
+		mux_blink <= blink when cmd_blink = '0'
+        else NOT blink;
+		
+		led1_out <= led1_RVB when blink = '1'
+		else (others => '0');
+        
+        led2_out <= led2_RVB when blink = '1'
+		else (others => '0');
+        
 end behavioral;

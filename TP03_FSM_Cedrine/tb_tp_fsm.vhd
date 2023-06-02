@@ -11,9 +11,10 @@ architecture behavioral of tb_tp_fsm is
 
 	signal resetn        : std_logic := '0';
 	signal clock         : std_logic := '0';
-	signal end_counter_cycles : std_logic := '0';
-	--signal LED         : std_logic := '0';
-	--signal restart     : std_logic := '0';
+	signal restart       : std_logic := '0';
+	signal led1_out      : std_logic_vector (2 downto 0);
+	signal led2_out      : std_logic_vector (2 downto 0);
+
 	
 	--Les constantes suivantes permette de definir la frequence de l'horloge 
 	constant hp : time := 5 ns;      -- demi periode de 5ns
@@ -27,11 +28,11 @@ architecture behavioral of tb_tp_fsm is
         limit_combi : positive := 3 --199_999_999
        );
 	   port ( 
-        clock		: in std_logic; 
-        resetn		: in std_logic; 
-        end_counter_cycles : out std_logic
-        --LED         : out std_logic;
-        --restart     : in std_logic
+		clock			: in std_logic; 
+        resetn		    : in std_logic;
+        restart         : in std_logic;
+        led1_out        : out std_logic_vector (2 downto 0);
+        led2_out        : out std_logic_vector (2 downto 0)
 	   );
 	end component;
 	
@@ -47,9 +48,10 @@ architecture behavioral of tb_tp_fsm is
         port map (
             clock => clock, 
             resetn => resetn, 
-            end_counter_cycles => end_counter_cycles
-            --LED => LED,
-            --restart => restart
+            restart => restart,
+            led1_out => led1_out, 
+            led2_out => led2_out
+            
         );
 		
 	--Simulation du signal d'horloge en continue
@@ -71,7 +73,24 @@ architecture behavioral of tb_tp_fsm is
 	     wait for period*10; 
 	     
 	     resetn <= '0';
+	     wait for 1395ns;
+	     
+	     restart <= '1';
+	     wait for period*300;
+	     
+	     
+--	     restart <= '0';
+--	     wait for period*300;
 	
+--	     restart <= '1';
+--	     wait for period*10;
+	    
+--	     restart <= '0';
+--	     wait for period*300;
+
+--	     restart <= '1';
+--	     wait for period*10;
+	     	     	     
 	     wait;
 
 	     -- attente pendant 20 periodes

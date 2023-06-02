@@ -12,10 +12,7 @@ entity counter_unit is
    port ( 
     clock		: in std_logic; 
     resetn		: in std_logic; 
-    end_counter	: out std_logic
-    
-    --LED      	: out std_logic;
-    --restart     : in std_logic
+    end_counter	: out std_logic	
     );
 end counter_unit;
 
